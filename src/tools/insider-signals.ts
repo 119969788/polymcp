@@ -121,7 +121,7 @@ export async function handleGetInsiderSignals(
   try {
     const service = getSignalService();
 
-    const result = service.getSignals({
+    const result = await service.getSignals({
       type: input.type,
       severity: input.severity,
       unreadOnly: input.unreadOnly ?? false,
@@ -130,9 +130,9 @@ export async function handleGetInsiderSignals(
     });
 
     return {
-      signals: (await result).signals,
-      total: (await result).total,
-      unreadCount: (await result).unreadCount,
+      signals: result.signals,
+      total: result.total,
+      unreadCount: result.unreadCount,
       filters: {
         type: input.type || 'all',
         severity: input.severity || 'all',

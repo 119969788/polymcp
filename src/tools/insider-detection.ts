@@ -495,21 +495,7 @@ export async function handleAnalyzeWalletInsider(
       potentialProfit: totalVolume * ((characteristics.returnMultiple || 1) - 1),
       totalVolume,
       walletAge: characteristics.walletAgeDays,
-      suspiciousTrades: suspiciousTrades.map((t) => ({
-        ...t,
-        suspiciousReasons: [],
-        potentialReturn: 0,
-        returnMultiple: characteristics.returnMultiple,
-      })),
-      markets,
-      totalVolume,
-      potentialProfit: totalVolume * (characteristics.returnMultiple - 1),
-      firstSeen: now,
-      lastActivity: suspiciousTrades[0]?.timestamp || now,
-      walletAge: characteristics.walletAgeDays,
       tags: [],
-      analyzedAt: now,
-      analyzedBy: 'agent',
     };
 
     // Save if high score and saveCandidate is not false
@@ -531,18 +517,18 @@ export async function handleAnalyzeWalletInsider(
       levelColor: getInsiderLevelColor(scoreResult.level),
       levelDescription: getInsiderLevelDescription(scoreResult.level),
       breakdown: {
-        baseScore: scoreResult.breakdown.baseScore,
-        bonusScore: scoreResult.breakdown.bonusScore,
-        features: scoreResult.breakdown.features.map((f) => ({
-          name: f.name,
+        baseScore: scoreResult.breakdown.baseScore || 0,
+        bonusScore: scoreResult.breakdown.bonusScore || 0,
+        features: (scoreResult.breakdown.features || []).map((f: any) => ({
+          name: f.feature,
           weight: f.weight,
-          matched: f.matched,
-          contribution: f.contribution,
+          matched: true,
+          contribution: f.score,
         })),
-        bonuses: scoreResult.breakdown.bonuses.map((b) => ({
-          name: b.name,
-          value: b.value,
-          matched: b.matched,
+        bonuses: (scoreResult.breakdown.bonuses || []).map((b: any) => ({
+          name: b.feature,
+          value: b.score,
+          matched: true,
         })),
       },
       characteristics: {
@@ -554,8 +540,9 @@ export async function handleAnalyzeWalletInsider(
         priceStandardDeviation: characteristics.priceStandardDeviation
           ? Math.round(characteristics.priceStandardDeviation * 1000) / 1000
           : undefined,
-        returnMultiple:
-          Math.round(characteristics.returnMultiple * 100) / 100 + 'x',
+        returnMultiple: characteristics.returnMultiple
+          ? Math.round(characteristics.returnMultiple * 100) / 100 + 'x'
+          : undefined,
         marketType: characteristics.marketType,
       },
       summary: {
