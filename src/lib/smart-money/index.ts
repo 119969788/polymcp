@@ -10,6 +10,14 @@
 export type MarketType = 'standard' | 'political' | 'crypto' | 'sports' | 'other';
 export type PoliticalCategory = 'election' | 'geopolitics' | 'policy' | 'leadership' | 'international';
 
+export interface PoliticalMarketResult {
+  isPolitical: boolean;
+  category: PoliticalCategory;
+  matchedFigures?: string[];
+  matchedRegions?: string[];
+  confidence?: number;
+}
+
 export interface InsiderCharacteristics {
   isNewWallet: boolean;
   hasNoHistory: boolean;
@@ -144,14 +152,6 @@ export function isPoliticalMarket(marketTitle: string, description?: string): bo
     'international', 'treaty', 'alliance', 'summit'
   ];
   return politicalKeywords.some(keyword => text.includes(keyword));
-}
-
-export interface PoliticalMarketResult {
-  isPolitical: boolean;
-  category: PoliticalCategory;
-  matchedFigures?: string[];
-  matchedRegions?: string[];
-  confidence?: number;
 }
 
 export function categorizePoliticalMarket(marketTitle: string, description?: string): PoliticalCategory | PoliticalMarketResult {
