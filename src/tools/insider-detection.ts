@@ -251,7 +251,7 @@ interface GetPoliticalMarketsInput {
  */
 function determineMarketType(title: string, description?: string): MarketType {
   const result = categorizePoliticalMarket(title, description);
-  if (result.isPolitical) {
+  if (typeof result === 'object' && 'isPolitical' in result && result.isPolitical) {
     return 'political';
   }
   const text = `${title} ${description || ''}`.toLowerCase();
@@ -298,6 +298,7 @@ interface ActivityItem {
 interface PositionItem {
   title?: string;
   avgPrice?: number;
+  curPrice?: number;
 }
 
 /**
@@ -505,7 +506,7 @@ export async function handleAnalyzeWalletInsider(
       store.metadata.lastScanAt = now;
       store.metadata.totalCandidates = Object.keys(store.candidates).length;
       store.metadata.highScoreCount = Object.values(store.candidates).filter(
-        (c) => c.insiderScore >= INSIDER_THRESHOLDS.critical
+        (c) => (c.insiderScore || c.score) >= INSIDER_THRESHOLDS.critical
       ).length;
       await saveCandidates(store);
     }
@@ -547,7 +548,7 @@ export async function handleAnalyzeWalletInsider(
       },
       summary: {
         totalVolume: Math.round(totalVolume * 100) / 100,
-        potentialProfit: Math.round(candidate.potentialProfit * 100) / 100,
+        potentialProfit: candidate.potentialProfit ? Math.round(candidate.potentialProfit * 100) / 100 : 0,
         markets: markets.length,
         recentTrades: suspiciousTrades.length,
       },
@@ -660,7 +661,7 @@ export async function handleGetInsiderCandidates(
     const minScore = input.minScore ?? 0;
     const maxScore = input.maxScore ?? 100;
     candidates = candidates.filter(
-      (c) => c.insiderScore >= minScore && c.insiderScore <= maxScore
+      (c) => (c.insiderScore || c.score) >= minScore && (c.insiderScore || c.score) <= maxScore
     );
 
     // Sort
@@ -670,13 +671,13 @@ export async function handleGetInsiderCandidates(
       let cmp = 0;
       switch (sortBy) {
         case 'score':
-          cmp = a.insiderScore - b.insiderScore;
+          cmp = (a.insiderScore || a.score) - (b.insiderScore || b.score);
           break;
         case 'analyzedAt':
           cmp = a.analyzedAt - b.analyzedAt;
           break;
         case 'potentialProfit':
-          cmp = a.potentialProfit - b.potentialProfit;
+          cmp = (a.potentialProfit || 0) - (b.potentialProfit || 0);
           break;
       }
       return sortOrder === 'desc' ? -cmp : cmp;
@@ -692,10 +693,10 @@ export async function handleGetInsiderCandidates(
         displayName: c.displayName,
         insiderScore: c.insiderScore,
         level: c.insiderLevel,
-        levelColor: getInsiderLevelColor(c.insiderLevel),
-        levelDescription: getInsiderLevelDescription(c.insiderLevel),
-        totalVolume: Math.round(c.totalVolume * 100) / 100,
-        potentialProfit: Math.round(c.potentialProfit * 100) / 100,
+        levelColor: getInsiderLevelColor(c.insiderLevel || c.level),
+        levelDescription: getInsiderLevelDescription(c.insiderLevel || c.level),
+        totalVolume: Math.round((c.totalVolume || 0) * 100) / 100,
+        potentialProfit: c.potentialProfit ? Math.round(c.potentialProfit * 100) / 100 : 0,
         markets: c.markets.length,
         walletAgeDays: c.walletAge,
         analyzedAt: new Date(c.analyzedAt).toISOString(),
@@ -798,7 +799,7 @@ export async function handleGetPoliticalMarkets(
 
       // Categorize
       const result = categorizePoliticalMarket(m.question, m.description);
-      if (!result.isPolitical) {
+      if (typeof result === 'string' || !result.isPolitical) {
         continue;
       }
 
@@ -812,9 +813,9 @@ export async function handleGetPoliticalMarkets(
         title: m.question,
         slug: m.slug,
         category: result.category,
-        matchedFigures: result.matchedFigures,
-        matchedRegions: result.matchedRegions,
-        confidence: result.confidence,
+        matchedFigures: result.matchedFigures || [],
+        matchedRegions: result.matchedRegions || [],
+        confidence: result.confidence || 0.8,
         currentPrice: {
           yes: m.outcomePrices?.[0] ?? 0.5,
           no: m.outcomePrices?.[1] ?? 0.5,

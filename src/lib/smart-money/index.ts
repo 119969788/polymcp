@@ -64,11 +64,11 @@ export interface InsiderCandidate {
   markets: string[];
   characteristics: InsiderCharacteristics;
   // Additional fields used in code
-  insiderScore?: number;
-  insiderLevel?: string;
+  insiderScore: number;
+  insiderLevel: string;
   displayName?: string;
-  totalVolume?: number;
-  walletAge?: number;
+  totalVolume: number;
+  walletAge: number;
   tags?: string[];
 }
 
@@ -146,7 +146,15 @@ export function isPoliticalMarket(marketTitle: string, description?: string): bo
   return politicalKeywords.some(keyword => text.includes(keyword));
 }
 
-export function categorizePoliticalMarket(marketTitle: string, description?: string): PoliticalCategory | { isPolitical: boolean; category: PoliticalCategory; matchedFigures?: string[]; matchedRegions?: string[]; confidence?: number } {
+export interface PoliticalMarketResult {
+  isPolitical: boolean;
+  category: PoliticalCategory;
+  matchedFigures?: string[];
+  matchedRegions?: string[];
+  confidence?: number;
+}
+
+export function categorizePoliticalMarket(marketTitle: string, description?: string): PoliticalCategory | PoliticalMarketResult {
   const text = `${marketTitle} ${description || ''}`.toLowerCase();
   const isPolitical = isPoliticalMarket(marketTitle, description);
   
