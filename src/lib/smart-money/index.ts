@@ -41,7 +41,16 @@ export interface InsiderScoreResult {
     weight: number;
     score: number;
     description: string;
-  }[];
+    baseScore?: number;
+    bonusScore?: number;
+    features?: Array<{ feature: string; weight: number; score: number; description: string }>;
+    bonuses?: Array<{ feature: string; score: number; description: string }>;
+  }[] & {
+    baseScore?: number;
+    bonusScore?: number;
+    features?: Array<{ feature: string; weight: number; score: number; description: string }>;
+    bonuses?: Array<{ feature: string; score: number; description: string }>;
+  };
   bonusPoints: number;
   riskFactors: string[];
 }
@@ -54,6 +63,13 @@ export interface InsiderCandidate {
   potentialProfit?: number;
   markets: string[];
   characteristics: InsiderCharacteristics;
+  // Additional fields used in code
+  insiderScore?: number;
+  insiderLevel?: string;
+  displayName?: string;
+  totalVolume?: number;
+  walletAge?: number;
+  tags?: string[];
 }
 
 export const INSIDER_THRESHOLDS = {
@@ -65,6 +81,8 @@ export const INSIDER_THRESHOLDS = {
   DEPOSIT_WINDOW_MINUTES: 1440, // 24 hours
   PRICE_SENSITIVITY_THRESHOLD: 0.05,
   RETURN_MULTIPLE_THRESHOLD: 5,
+  high: 60,
+  critical: 80,
 } as const;
 
 // ============================================================================
@@ -128,26 +146,34 @@ export function isPoliticalMarket(marketTitle: string, description?: string): bo
   return politicalKeywords.some(keyword => text.includes(keyword));
 }
 
-export function categorizePoliticalMarket(marketTitle: string, description?: string): PoliticalCategory {
+export function categorizePoliticalMarket(marketTitle: string, description?: string): PoliticalCategory | { isPolitical: boolean; category: PoliticalCategory; matchedFigures?: string[]; matchedRegions?: string[]; confidence?: number } {
   const text = `${marketTitle} ${description || ''}`.toLowerCase();
+  const isPolitical = isPoliticalMarket(marketTitle, description);
   
+  if (!isPolitical) {
+    return { isPolitical: false, category: 'election' };
+  }
+  
+  let category: PoliticalCategory = 'election';
   if (text.match(/\b(election|vote|candidate|party|senate|congress|president|governor)\b/)) {
-    return 'election';
-  }
-  if (text.match(/\b(war|conflict|sanction|embargo|diplomacy|geopolitics)\b/)) {
-    return 'geopolitics';
-  }
-  if (text.match(/\b(policy|law|bill|legislation|regulation)\b/)) {
-    return 'policy';
-  }
-  if (text.match(/\b(leadership|minister|prime minister|chancellor|president|leader)\b/)) {
-    return 'leadership';
-  }
-  if (text.match(/\b(treaty|alliance|summit|international|un|nato)\b/)) {
-    return 'international';
+    category = 'election';
+  } else if (text.match(/\b(war|conflict|sanction|embargo|diplomacy|geopolitics)\b/)) {
+    category = 'geopolitics';
+  } else if (text.match(/\b(policy|law|bill|legislation|regulation)\b/)) {
+    category = 'policy';
+  } else if (text.match(/\b(leadership|minister|prime minister|chancellor|president|leader)\b/)) {
+    category = 'leadership';
+  } else if (text.match(/\b(treaty|alliance|summit|international|un|nato)\b/)) {
+    category = 'international';
   }
   
-  return 'election'; // default
+  return {
+    isPolitical: true,
+    category,
+    matchedFigures: [],
+    matchedRegions: [],
+    confidence: 0.8,
+  };
 }
 
 // ============================================================================
@@ -155,16 +181,17 @@ export function categorizePoliticalMarket(marketTitle: string, description?: str
 // ============================================================================
 
 export function calculateInsiderScore(characteristics: InsiderCharacteristics): InsiderScoreResult {
-  let score = 0;
-  const breakdown: InsiderScoreResult['breakdown'] = [];
+  let baseScore = 0;
   let bonusPoints = 0;
+  const features: Array<{ feature: string; weight: number; score: number; description: string }> = [];
+  const bonuses: Array<{ feature: string; score: number; description: string }> = [];
   const riskFactors: string[] = [];
 
   // Base features with weights
   if (characteristics.isNewWallet) {
     const featureScore = 15;
-    score += featureScore;
-    breakdown.push({
+    baseScore += featureScore;
+    features.push({
       feature: 'New Wallet',
       weight: 15,
       score: featureScore,
@@ -175,8 +202,8 @@ export function calculateInsiderScore(characteristics: InsiderCharacteristics): 
 
   if (characteristics.hasNoHistory) {
     const featureScore = 10;
-    score += featureScore;
-    breakdown.push({
+    baseScore += featureScore;
+    features.push({
       feature: 'No History',
       weight: 10,
       score: featureScore,
@@ -187,8 +214,8 @@ export function calculateInsiderScore(characteristics: InsiderCharacteristics): 
 
   if (characteristics.singleSidedBet) {
     const featureScore = 20;
-    score += featureScore;
-    breakdown.push({
+    baseScore += featureScore;
+    features.push({
       feature: 'Single-Sided Bet',
       weight: 20,
       score: featureScore,
@@ -199,8 +226,8 @@ export function calculateInsiderScore(characteristics: InsiderCharacteristics): 
 
   if (characteristics.largePosition) {
     const featureScore = 15;
-    score += featureScore;
-    breakdown.push({
+    baseScore += featureScore;
+    features.push({
       feature: 'Large Position',
       weight: 15,
       score: featureScore,
@@ -211,8 +238,8 @@ export function calculateInsiderScore(characteristics: InsiderCharacteristics): 
 
   if (characteristics.timingSensitive) {
     const featureScore = 10;
-    score += featureScore;
-    breakdown.push({
+    baseScore += featureScore;
+    features.push({
       feature: 'Timing Sensitive',
       weight: 10,
       score: featureScore,
@@ -223,8 +250,8 @@ export function calculateInsiderScore(characteristics: InsiderCharacteristics): 
 
   if (characteristics.shortDepositWindow) {
     const featureScore = 25;
-    score += featureScore;
-    breakdown.push({
+    baseScore += featureScore;
+    features.push({
       feature: 'Short Deposit Window',
       weight: 25,
       score: featureScore,
@@ -235,8 +262,8 @@ export function calculateInsiderScore(characteristics: InsiderCharacteristics): 
 
   if (characteristics.lowPriceSensitivity) {
     const featureScore = 10;
-    score += featureScore;
-    breakdown.push({
+    baseScore += featureScore;
+    features.push({
       feature: 'Low Price Sensitivity',
       weight: 10,
       score: featureScore,
@@ -247,8 +274,8 @@ export function calculateInsiderScore(characteristics: InsiderCharacteristics): 
 
   if (characteristics.twoPhasePattern) {
     const featureScore = 15;
-    score += featureScore;
-    breakdown.push({
+    baseScore += featureScore;
+    features.push({
       feature: 'Two-Phase Pattern',
       weight: 15,
       score: featureScore,
@@ -259,34 +286,39 @@ export function calculateInsiderScore(characteristics: InsiderCharacteristics): 
 
   // Bonus points
   if (characteristics.returnMultiple && characteristics.returnMultiple >= INSIDER_THRESHOLDS.RETURN_MULTIPLE_THRESHOLD) {
-    bonusPoints += 10;
-    breakdown.push({
+    const bonus = 10;
+    bonusPoints += bonus;
+    bonuses.push({
       feature: 'High Return Multiple',
-      weight: 0,
-      score: 10,
+      score: bonus,
       description: `Return: ${(characteristics.returnMultiple * 100).toFixed(1)}%`,
     });
     riskFactors.push('High return multiple');
   }
 
   if (characteristics.marketType === 'political') {
-    bonusPoints += 5;
-    breakdown.push({
+    const bonus = 5;
+    bonusPoints += bonus;
+    bonuses.push({
       feature: 'Political Market',
-      weight: 0,
-      score: 5,
+      score: bonus,
       description: 'Trading in political market',
     });
   }
 
   // Cap score at 100
-  const totalScore = Math.min(100, score + bonusPoints);
+  const totalScore = Math.min(100, baseScore + bonusPoints);
 
   return {
     score: totalScore,
     level: getInsiderLevel(totalScore),
     characteristics,
-    breakdown,
+    breakdown: {
+      baseScore,
+      bonusScore: bonusPoints,
+      features,
+      bonuses,
+    } as any,
     bonusPoints,
     riskFactors,
   };
@@ -337,6 +369,10 @@ export class WalletClassificationService {
     return [];
   }
 
+  async getTagDefinition(id: string): Promise<any | null> {
+    return null;
+  }
+
   async addTagDefinition(options: any): Promise<any> {
     return { success: true };
   }
@@ -353,8 +389,8 @@ export class WalletClassificationService {
     return [];
   }
 
-  async removeWalletTag(address: string, tagId: string): Promise<boolean> {
-    return true;
+  async removeWalletTag(address: string, tagId: string): Promise<{ address: string; tags: string[] }> {
+    return { address, tags: [] };
   }
 }
 
@@ -365,11 +401,15 @@ export class InsiderSignalService {
     this.dataDir = options.dataDir;
   }
 
-  async getSignals(options?: any): Promise<any[]> {
-    return [];
+  async getSignals(options?: any): Promise<{ signals: any[]; total: number; unreadCount: number }> {
+    return { signals: [], total: 0, unreadCount: 0 };
   }
 
   async getSignalCount(): Promise<number> {
+    return 0;
+  }
+
+  getUnreadCount(): number {
     return 0;
   }
 
@@ -377,8 +417,16 @@ export class InsiderSignalService {
     return true;
   }
 
+  markAsRead(id: string): Promise<boolean> {
+    return this.markRead(id);
+  }
+
   async markAllRead(): Promise<number> {
     return 0;
+  }
+
+  markAllAsRead(): Promise<number> {
+    return this.markAllRead();
   }
 }
 

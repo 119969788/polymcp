@@ -391,7 +391,9 @@ async function calculateCharacteristics(
     (sum: number, p: PositionItem) => sum + (p.avgPrice || 0.5),
     0
   ) / Math.max(positions.length, 1);
-  const returnMultiple = calculateReturnMultiple(avgPositionPrice || 0.5);
+  // Calculate return multiple (need current price, use avg price as fallback)
+  const currentPrice = positions[0]?.curPrice || avgPositionPrice || 0.5;
+  const returnMultiple = calculateReturnMultiple(avgPositionPrice || 0.5, currentPrice);
 
   // Determine market type
   const primaryMarketTitle =
@@ -477,15 +479,22 @@ export async function handleAnalyzeWalletInsider(
       });
 
     // Calculate score
-    const scoreResult = calculateInsiderScore({ characteristics });
+    const scoreResult = calculateInsiderScore(characteristics);
 
     // Build candidate
     const now = Date.now();
     const candidate: InsiderCandidate = {
       address: input.address.toLowerCase(),
+      score: scoreResult.score,
+      level: scoreResult.level,
       insiderScore: scoreResult.score,
       insiderLevel: scoreResult.level,
+      analyzedAt: now,
       characteristics,
+      markets,
+      potentialProfit: totalVolume * ((characteristics.returnMultiple || 1) - 1),
+      totalVolume,
+      walletAge: characteristics.walletAgeDays,
       suspiciousTrades: suspiciousTrades.map((t) => ({
         ...t,
         suspiciousReasons: [],
@@ -614,7 +623,7 @@ export async function handleScanInsiderWallets(
               totalVolume: result.summary.totalVolume,
               potentialProfit: result.summary.potentialProfit,
               yesBetRatio: result.characteristics.yesBetRatio,
-              marketType: result.characteristics.marketType,
+              marketType: result.characteristics.marketType || 'standard',
             },
           });
         }

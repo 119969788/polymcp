@@ -130,9 +130,9 @@ export async function handleGetInsiderSignals(
     });
 
     return {
-      signals: result.signals,
-      total: result.total,
-      unreadCount: result.unreadCount,
+      signals: (await result).signals,
+      total: (await result).total,
+      unreadCount: (await result).unreadCount,
       filters: {
         type: input.type || 'all',
         severity: input.severity || 'all',
