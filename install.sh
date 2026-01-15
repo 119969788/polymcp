@@ -94,9 +94,20 @@ echo "步骤 4: 安装项目依赖..."
 if [ -d "node_modules" ]; then
     echo "node_modules 已存在，跳过安装"
 else
-    # 尝试使用国内镜像加速
+    # 配置混合源：@catalyst-team 包使用官方源，其他使用镜像
+    echo "配置 npm 源..."
+    cat > .npmrc << 'EOF'
+registry=https://registry.npmmirror.com/
+@catalyst-team:registry=https://registry.npmjs.org/
+EOF
+    echo "✓ npm 源配置完成"
+    
+    # 安装依赖
     echo "使用 npm 安装依赖（可能需要几分钟）..."
-    npm install --registry=https://registry.npmmirror.com || npm install
+    npm install || {
+        echo "使用镜像安装失败，尝试使用官方源..."
+        npm install --registry=https://registry.npmjs.org/
+    }
     echo "✓ 依赖安装完成"
 fi
 echo ""

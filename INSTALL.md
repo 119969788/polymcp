@@ -89,12 +89,21 @@ cd polymcp
 ## 📚 步骤 5: 安装项目依赖
 
 ```bash
+# 重要：@catalyst-team 的包需要使用官方 npm registry
+# 配置混合源：@catalyst-team 使用官方源，其他使用镜像
+cat > .npmrc << 'EOF'
+registry=https://registry.npmmirror.com/
+@catalyst-team:registry=https://registry.npmjs.org/
+EOF
+
 # 安装所有依赖
 npm install
 
-# 如果安装速度慢，可以使用国内镜像
-npm install --registry=https://registry.npmmirror.com
+# 如果上述方法失败，直接使用官方源
+# npm install --registry=https://registry.npmjs.org/
 ```
+
+**注意**: `@catalyst-team/smart-money` 和 `@catalyst-team/poly-sdk` 包在镜像源中可能不存在，需要使用官方 npm registry。
 
 ## 🏗️ 步骤 6: 构建项目
 
