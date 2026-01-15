@@ -10,7 +10,7 @@ import {
   InsiderSignalService,
   type InsiderSignalType,
   type InsiderSignalSeverity,
-} from '@catalyst-team/smart-money';
+} from '../lib/smart-money/index.js';
 import { join } from 'node:path';
 import { wrapError } from '../errors.js';
 

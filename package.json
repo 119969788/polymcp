@@ -36,8 +36,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "ethers": "^5.7.2",
-    "@catalyst-team/poly-sdk": "0.4.3",
-    "@catalyst-team/smart-money": "0.1.0"
+    "@catalyst-team/poly-sdk": "0.4.3"
   },
   "devDependencies": {
     "tsx": "^4.7.0",

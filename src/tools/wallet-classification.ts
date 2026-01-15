@@ -20,7 +20,7 @@ import {
   type ClassifyWalletOptions,
   type AddTagDefinitionOptions,
   type ClassificationMetrics,
-} from '@catalyst-team/smart-money';
+} from '../lib/smart-money/index.js';
 import type { ToolDefinition } from '../types.js';
 import { wrapError, McpToolError, ErrorCode } from '../errors.js';
 

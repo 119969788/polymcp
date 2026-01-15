@@ -36,7 +36,7 @@ import {
   type InsiderScoreResult,
   type MarketType,
   type PoliticalCategory,
-} from '@catalyst-team/smart-money';
+} from '../lib/smart-money/index.js';
 import type { ToolDefinition } from '../types.js';
 import { wrapError, McpToolError, ErrorCode } from '../errors.js';
 import * as fs from 'fs/promises';
